@@ -1,0 +1,133 @@
+= AA Single Page Application Template
+
+[WARNING]
+This project is meant to be cloned with the https://ghe.aa.com/open-source/aa-ioss-fly[Fly CLI] command line utility. If you have cloned this project, you will need to manually replace the tokens that begin and end with `%` (e.g. `%APP_NAME%` and others).
+
+== Quick Start
+
+* https://americanairlines.slack.com/messages/C3M8B3C7J[AA Angular Slack channel]
+* https://americanairlines.slack.com/messages/C75U8R8J2[AA Web Template Slack channel]
+
+=== Development
+
+.Prerequisites
+. _You must be on the AA Network to build the first time_
+. Install the scripting platform https://nodejs.org/[NodeJS]
+. Install improved scripting package management https://yarnpkg.com/en/docs/install[Yarn]
+. Install https://ghe.aa.com/open-source/aa-ioss-fly[Fly CLI]
+
+.Starting the Application
+. Ensure you are connected to the AA Network (service dependencies include AA code packages to simplify development for common concerns, like security, cloud, etc.)
+. Run `$ fly web start`
+. Open http://localhost:4200/
+
+TIP: You can still use NPM and Yarn commands directly.
+
+=== Testing
+
+Testers are encouraged to write tests in the same code base as the application, with the developers. This ensures that everything required to test the quality of a service exists in the same code base.
+
+. Run the steps for "Development"
+. Run `$ yarn test`
+
+=== Continuous Integration
+
+.Setup Source Control for the First Time
+. Run the "Development" steps
+. Login to https://ghe.aa.com/[AA GitHub Enterprise]. _If you don't have access, request it from DevOps.Services@aa.com[EIS, DevOps]._
+. Create a new repository
+. Replace the following command with your git url. Run `git remote add origin [( ${sourceControlUrl} )]`
+. Push your local changes to GHE `git push -u origin master`
+
+.Setup GHE for Jenkins
+. Login to your [( ${sourceControlUrl} )]/settings/hooks[GHE repository Hooks]
+. Click `Add webhook`
+.. Enter the `Payload URL`: http://cbjm.qcorpaa.aa.com:8080/github-webhook/
+.. Select `Let me select individual events.`
+.. Check `Push`
+.. Check `Repository`
+.. Click `Add webhook`
+. Click `Add webhook`
+.. Enter the `Payload URL`: http://10.62.98.33:8080/github-webhook/
+.. Select `Let me select individual events.`
+.. Check `Push`
+.. Check `Repository`
+.. Click `Add webhook`
+. Open https://ghe.aa.com/settings/tokens/new[new personal access token] on GHE
+. Enter `Token description`: `AA Customer Technology Customer Support Jenkins`
+. Check `repo`
+. Click `Generate token`
+. Copy the value of the token
+. Paste this value into a text editor
+
+WARNING: The token will only be displayed once. You need to copy it immediately after it is displayed.
+
+.Setup Jenkins "Credentials" (Environment Variables)
+. Login to http://cbjm.qcorpaa.aa.com:8080/job/AA-DevOps/[Jenkins]
+. Navigate to your organization
+. Click `Credentials`
+. Click `(global)`
+. Click `Add Credentials` (top-left)
+. Select `Kind`: `Username with password`
+. Enter `Username`: enter your GHE username (_This is usually your "corpaa" id prefixed with two leading zeros_)
+. Enter `Password`: copy-paste the GHE Personal Access Token you created earlier
+. Enter `ID`: `{username}-jenkins-ghe` (_This can be anything. But this is simply a convention where `{username}` is your name in lower-case, like `eswanson-jenkins-ghe` for Eric Swanson_)
+. Enter `Description`: This can be anything. (e.g. `{Full Name} Jenkins Key for Personal Repos` where `{Full Name}` is your name)
+. Click `Save`
+. Click `Add Credentials` (top-left)
+. Select `Kind`: `Secret text`
+. Enter `Secret`: enter your IBM Bluemix API Key
+. Enter `ID`: `%DEVOPS_JENKINS_BLUEMIX_TOKEN%` (_This matches the environment variable in `./devops/jenkins/Jenkinsfile`_)
+. Enter `Description`: This can be anything. (e.g. `{Full Name} Jenkins API Key for Bluemix` where `{Full Name}` is your name)
+. Click `Save`
+. Click `Add Credentials` (top-left)
+. Select `Kind`: `Secret text`
+. Enter `Secret`: enter the Slack "Integration" Token for your channel
+. Enter `ID`: `%DEVOPS_JENKINS_SLACK_TOKEN_NAME%` (_This matches the environment variable in `./devops/jenkins/Jenkinsfile`_)
+. Enter `Description`: This can be anything. (e.g. `{Full Name} Jenkins API Key for Bluemix` where `{Full Name}` is your name)
+. Click `Save`
+
+.Setup Jenkins Scripted Pipeline
+. Navigate back to your organization in Jenkins
+. Click `New Item` (top-left)
+. Enter the name `[( ${artifactId} )]`
+. Select `Pipeline`
+. Click `OK`
+. Check the box `GitHub project` and enter: [( ${sourceControlUrl} )]
+. Under `Build Triggers`, check `Build when a change is pushed to GitHub`
+. Under `Pipeline`...
+.. Select the `Definition` `Pipeline script from SCM`
+.. Select the `SCM` `Git`
+.. Enter the `Repository URL`: [( ${sourceControlUrl} )]
+.. Select the credentials Jenkins will use to authenticate to GHE _If you don't know what these are, e-mail DevOps.Services@aa.com[EIS, DevOps]._
+.. Modify the `Script Path` to be: devops/jenkins/Jenkinsfile
+.. Click `Save`
+.. Click `Build Now` (top-left)
+.. View the [( ${continuousIntegrationTitle} )]/1/console[console output of your first build]
+
+If you can run the same service code locally from GHE and the Jenkins `Credentials` are setup correctly, the console will display:
+
+.Expected Build Console Output
+* Successful clone of GHE source code
+* Successful download of source code dependencies
+* Successful compilation
+* Successful test execution
+* Successful upload of build artifacts to AA Nexus
+* Successful deployment to IBM Bluemix
+
+=== Operations
+
+== Technical Overview
+
+* link:./docs/ng-cli.md[See Angular CLI README]
+
+_TODO: Provide a technical overview for this service._
+
+.Template Token Replacement Values
+* `APP_NAME`: "%APP_NAME%" - The application's name
+* `DEVOPS_BLUEMIX_ORG`: "%DEVOPS_BLUEMIX_ORG%" - The Cloud Foundry organization name used by DevOps scripts
+* `DEVOPS_SLACK_CHANNEL_NAME`: "%DEVOPS_SLACK_CHANNEL_NAME%" - The Slack channel for build notifications used by DevOps scripts
+* `DEVOPS_JENKINS_SLACK_TOKEN_NAME`: "%DEVOPS_JENKINS_SLACK_TOKEN_NAME%" - The Slack token for posting messages to the `%SLACK_CHANNEL_NAME%` channel, stored as a Jenkins "Credential" used by DevOps scripts
+* `DEVOPS_JENKINS_BLUEMIX_TOKEN`: "%DEVOPS_JENKINS_BLUEMIX_TOKEN%" - The Bluemix API Key for interacting with Cloud Foundry CLI used by DevOps scripts
+
+Template retrieved from: https://ghe.aa.com/open-source/aa-ioss-ng["aa-ioss-ng" AA GHE]
